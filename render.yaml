@@ -1,0 +1,8 @@
+# Render.com – Web Service (optional: use dashboard instead)
+services:
+  - type: web
+    name: alphag
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -b 0.0.0.0:$PORT app:app"
+    envVars: []  # no API key needed; user enters in the form
