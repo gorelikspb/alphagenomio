@@ -3,7 +3,6 @@ import os
 from typing import Any, List, Optional
 
 from dotenv import load_dotenv
-ё5ее
 from flask import Flask, render_template, request
 
 load_dotenv()
