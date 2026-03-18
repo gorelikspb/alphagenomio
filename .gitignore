@@ -1,0 +1,19 @@
+# Local env and secrets - never commit
+.env
+.env.local
+*.env
+
+# Local docs (not tracked)
+docs/
+
+# Python
+__pycache__/
+.venv/
+venv/
+*.pyc
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
