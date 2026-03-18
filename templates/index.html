@@ -140,9 +140,102 @@
             <code>{{ result.track_means }}</code>
           </li>
         </ul>
-        <details style="margin-top: 12px;">
-          <summary style="cursor: pointer; font-weight: 600;">Full API response</summary>
-          <pre style="margin: 8px 0 0; padding: 10px; background: #1e1e1e; color: #d4d4d4; border-radius: 6px; font-size: 0.8rem; overflow: auto; max-height: 400px;">{{ result.api_raw_json | e }}</pre>
+        {% if result.track_meta %}
+          <div style="margin-top: 12px;">
+            <div style="font-weight: 600; margin-bottom: 6px;">Tracks (metadata)</div>
+            <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                  <tr style="background: #eef2ff; text-align: left;">
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Name</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Tissue</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Life stage</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Source</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Strand</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">nonzero_mean</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for row in result.track_meta %}
+                  <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.name }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.biosample_name }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.biosample_life_stage }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.data_source }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.strand }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.nonzero_mean }}</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if result.segment_stats %}
+          <div style="margin-top: 12px;">
+            <div style="font-weight: 600; margin-bottom: 6px;">Segment stats (your sequence only)</div>
+            <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                  <tr style="background: #eef2ff; text-align: left;">
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Track</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Min</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Mean</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Max</th>
+                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Peak pos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for st in result.segment_stats %}
+                  <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ st.track_index }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.min) }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.mean) }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.max) }}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ st.max_pos }}</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if result.peaks_t0 %}
+          <div style="margin-top: 12px;">
+            <div style="font-weight: 600; margin-bottom: 6px;">Top peaks (track 0)</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              {% for p in result.peaks_t0 %}
+                <div style="background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; padding: 6px 10px; border-radius: 999px; font-size: 0.85rem;">
+                  pos {{ p.pos }}: {{ "%.4f"|format(p.value) }}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if result.highlighted_seq %}
+          <div style="margin-top: 10px;">
+            <div style="font-weight: 600; margin-bottom: 6px;">Sequence (peaks highlighted)</div>
+            <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; font-size: 0.95rem; line-height: 1.6; word-break: break-all; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff; background: #ffffff;">
+              {% for b in result.highlighted_seq %}
+                {% if b.is_peak %}
+                  <span title="pos {{ b.pos }}" style="background: #fde68a; border-radius: 4px; padding: 0 2px;">{{ b.ch }}</span>
+                {% else %}
+                  <span title="pos {{ b.pos }}">{{ b.ch }}</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        <details open style="margin-top: 12px;">
+          <summary style="cursor: pointer; font-weight: 600;">Full API response (JSON)</summary>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button type="button" class="btn-primary" style="padding: 6px 12px; margin-top: 0; font-size: 0.85rem;" onclick="navigator.clipboard.writeText(document.getElementById('api-json').innerText)">Copy JSON</button>
+          </div>
+          <pre id="api-json" style="margin: 8px 0 0; padding: 10px; background: #1e1e1e; color: #d4d4d4; border-radius: 6px; font-size: 0.8rem; overflow: auto; max-height: 400px;">{{ result.api_raw_json | e }}</pre>
         </details>
       </div>
     {% endif %}

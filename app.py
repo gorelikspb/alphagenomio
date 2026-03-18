@@ -110,6 +110,105 @@ def _build_api_raw_output(output, segment, start_idx: int, seq_len: int) -> dict
     return raw
 
 
+def _summarize_segment_stats(segment, max_tracks: int = 10) -> List[dict]:
+    """Compute compact per-track stats over the user's segment."""
+    try:
+        import numpy as np
+    except ImportError:
+        # Minimal fallback without numpy
+        stats: List[dict] = []
+        num_pos = len(segment)
+        num_tracks = len(segment[0]) if num_pos and hasattr(segment[0], "__len__") else 1
+        num_tracks = min(num_tracks, max_tracks)
+        for j in range(num_tracks):
+            vals = [float(segment[i][j]) for i in range(num_pos)]
+            vmin = min(vals) if vals else 0.0
+            vmax = max(vals) if vals else 0.0
+            mean = sum(vals) / max(len(vals), 1)
+            argmax = vals.index(vmax) + 1 if vals else None
+            stats.append({"track_index": j, "min": vmin, "mean": mean, "max": vmax, "max_pos": argmax})
+        return stats
+
+    seg = np.asarray(segment, dtype=float)
+    if seg.ndim == 1:
+        seg = seg.reshape(-1, 1)
+    seg = seg[:, :max_tracks]
+    mins = seg.min(axis=0)
+    maxs = seg.max(axis=0)
+    means = seg.mean(axis=0)
+    argmax = seg.argmax(axis=0) + 1  # 1-based position within segment
+    out: List[dict] = []
+    for j in range(seg.shape[1]):
+        out.append(
+            {
+                "track_index": int(j),
+                "min": float(mins[j]),
+                "mean": float(means[j]),
+                "max": float(maxs[j]),
+                "max_pos": int(argmax[j]),
+            }
+        )
+    return out
+
+
+def _compact_track_metadata(output, max_tracks: int = 10) -> Optional[List[dict]]:
+    """Return a compact view of TrackData.metadata for quick UI display."""
+    if output.dnase is None or not hasattr(output.dnase, "metadata") or output.dnase.metadata is None:
+        return None
+    meta = output.dnase.metadata
+    try:
+        records = meta.to_dict("records")
+    except Exception:
+        return None
+
+    keep_cols = [
+        "name",
+        "strand",
+        "biosample_name",
+        "biosample_type",
+        "biosample_life_stage",
+        "ontology_curie",
+        "data_source",
+        "nonzero_mean",
+    ]
+    compact: List[dict] = []
+    for row in records[:max_tracks]:
+        compact.append({k: _to_serializable(row.get(k)) for k in keep_cols if k in row})
+    return compact
+
+
+def _top_peaks(segment, k: int = 5, track_index: int = 0) -> List[dict]:
+    """Return top-k peak positions within the user's segment for a given track."""
+    try:
+        import numpy as np
+    except ImportError:
+        vals = [float(segment[i][track_index]) for i in range(len(segment))] if segment else []
+        ranked = sorted(enumerate(vals, start=1), key=lambda t: t[1], reverse=True)[:k]
+        return [{"pos": int(pos), "value": float(v)} for pos, v in ranked]
+
+    seg = np.asarray(segment, dtype=float)
+    if seg.ndim == 1:
+        seg = seg.reshape(-1, 1)
+    if seg.shape[0] == 0:
+        return []
+    j = min(track_index, seg.shape[1] - 1)
+    v = seg[:, j]
+    k = min(k, v.shape[0])
+    # argpartition for speed, then sort those indices by value desc
+    idx = np.argpartition(-v, k - 1)[:k]
+    idx = idx[np.argsort(-v[idx])]
+    return [{"pos": int(i + 1), "value": float(v[i])} for i in idx]  # 1-based
+
+
+def _highlighted_sequence(sequence: str, peak_positions_1based: List[int]) -> List[dict]:
+    """Return a per-base structure for templating with peak highlights."""
+    peak_set = set(int(p) for p in peak_positions_1based)
+    out: List[dict] = []
+    for i, ch in enumerate(sequence, start=1):
+        out.append({"pos": i, "ch": ch, "is_peak": i in peak_set})
+    return out
+
+
 def summarize_dnase_predictions(values) -> List[float]:
     """
     Take a 2D array (sequence_length x num_tracks) and return
@@ -167,6 +266,10 @@ def index():
                 start_idx = (len(padded) - len(sequence)) // 2
                 segment = dnase_values[start_idx : start_idx + len(sequence)]
                 means = summarize_dnase_predictions(segment)
+                segment_stats = _summarize_segment_stats(segment, max_tracks=10)
+                track_meta = _compact_track_metadata(output, max_tracks=10)
+                peaks_t0 = _top_peaks(segment, k=5, track_index=0)
+                highlighted_seq = _highlighted_sequence(sequence, [p["pos"] for p in peaks_t0])
                 api_raw = _build_api_raw_output(output, segment, start_idx, len(sequence))
                 try:
                     api_raw_json = json.dumps(api_raw, indent=2, ensure_ascii=False)
@@ -178,6 +281,10 @@ def index():
                     "padded_length": len(padded),
                     "num_tracks": len(means),
                     "track_means": [round(m, 4) for m in means[:10]],  # show first 10
+                    "segment_stats": segment_stats,
+                    "track_meta": track_meta,
+                    "peaks_t0": peaks_t0,
+                    "highlighted_seq": highlighted_seq,
                     "api_raw_json": api_raw_json,
                 }
             except Exception as exc:  # noqa: BLE001
