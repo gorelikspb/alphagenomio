@@ -25,7 +25,7 @@ def create_model(api_key: Optional[str] = None):
     key = api_key or os.environ.get("ALPHA_GENOME_API_KEY")
     if not key:
         raise RuntimeError(
-            "No API key: enter it in the field below, or set ALPHA_GENOME_API_KEY on the server."
+            "No API key provided. Enter it in the field, or set ALPHA_GENOME_API_KEY on the server."
         )
     return dna_client.create(key)
 
@@ -146,7 +146,7 @@ def index():
         if not sequence:
             error = "Please paste a DNA sequence."
         elif any(ch not in "ACGTN" for ch in sequence):
-            error = "Sequence should contain only A, C, G, T (and optionally N)."
+            error = "Sequence must contain only A, C, G, T (and optionally N)."
         else:
             try:
                 model = get_model(api_key)
@@ -194,6 +194,6 @@ def index():
 
 
 if __name__ == "__main__":
-    # Debug=True только для локальных экспериментов.
+    # debug=True only for local experiments.
     app.run(host="127.0.0.1", port=5000, debug=True)
 

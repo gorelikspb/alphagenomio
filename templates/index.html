@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AlphaGenome quick test</title>
+  <title>Alphagenomio - AlphaGenome quick test</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -108,16 +108,16 @@
 </head>
 <body>
   <div class="container">
-    <h1>AlphaGenome quick test</h1>
+    <h1>Alphagenomio</h1>
     <p class="subtitle">
-      Paste a short DNA sequence and run a minimal DNASE prediction using the AlphaGenome API.
+      Paste a DNA sequence and run a minimal DNase prediction using the AlphaGenome API.
     </p>
 
     <form method="post">
       {% if show_api_key_field %}
       <label for="api_key">AlphaGenome API key</label>
       <input type="password" id="api_key" name="api_key" placeholder="Paste key here (not stored on server)" autocomplete="off" style="width: 100%; padding: 8px 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #d0d7e2; box-sizing: border-box; font-family: monospace;" />
-      <p style="margin: -6px 0 12px; font-size: 0.85rem; color: #6b7280;">Required if the server has no key. Sent only with your request; use HTTPS when deployed.</p>
+      <p style="margin: -6px 0 12px; font-size: 0.85rem; color: #6b7280;">Required only if the server has no key configured. Sent only with your request (use HTTPS).</p>
       {% endif %}
       <label for="sequence">DNA sequence (A/C/G/T/N):</label>
       <textarea id="sequence" name="sequence" spellcheck="false">{{ sequence }}</textarea>
@@ -130,25 +130,25 @@
 
     {% if result %}
       <div class="card">
-        <h2>Prediction summary (DNASE, UBERON:0002048 – lung)</h2>
+        <h2>Prediction summary (DNase, UBERON:0002048 - lung)</h2>
         <ul class="summary-list">
           <li><strong>Input length:</strong> {{ result.input_length }} bp</li>
           <li><strong>Padded length (model context):</strong> {{ result.padded_length }} bp</li>
-          <li><strong>Number of DNASE tracks:</strong> {{ result.num_tracks }}</li>
+          <li><strong>Number of DNase tracks:</strong> {{ result.num_tracks }}</li>
           <li><strong>Mean value per track (first {{ result.track_means|length }}):</strong></li>
           <li>
             <code>{{ result.track_means }}</code>
           </li>
         </ul>
         <details style="margin-top: 12px;">
-          <summary style="cursor: pointer; font-weight: 600;">Полная отдача API</summary>
+          <summary style="cursor: pointer; font-weight: 600;">Full API response</summary>
           <pre style="margin: 8px 0 0; padding: 10px; background: #1e1e1e; color: #d4d4d4; border-radius: 6px; font-size: 0.8rem; overflow: auto; max-height: 400px;">{{ result.api_raw_json | e }}</pre>
         </details>
       </div>
     {% endif %}
 
     <div class="footer-note">
-      Local prototype – intended for experimentation with AlphaGenome.
+      Local prototype - intended for experimentation with AlphaGenome.
     </div>
   </div>
 </body>
