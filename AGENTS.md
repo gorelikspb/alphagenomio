@@ -23,3 +23,5 @@ The app requires a valid `ALPHA_GENOME_API_KEY` to make real API calls. Without 
 - `pip install -r requirements.txt` may fail on the system `packaging` package. Use `pip install --break-system-packages --ignore-installed packaging -r requirements.txt` if that happens.
 - There are no automated tests, no linter configuration, and no type-checking config in this repo.
 - Dependencies in `requirements.txt` are unpinned.
+- When `ALPHA_GENOME_API_KEY` is set as an env var, the web UI hides the API key input field and uses the server-side key for all requests. When unset, the field appears and users supply it per-request.
+- AlphaGenome API keys can expire. If you see a gRPC `INVALID_ARGUMENT` / "API key expired" error, the key needs renewal at the Google DeepMind console.
