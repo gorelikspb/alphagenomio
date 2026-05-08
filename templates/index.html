@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Alphagenomio - AlphaGenome quick test</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -202,6 +203,21 @@
           </div>
         {% endif %}
 
+        {% if result.chart_data %}
+          <div style="margin-top: 16px;">
+            <div style="font-weight: 600; margin-bottom: 6px;">DNase signal across your sequence</div>
+            <div style="background: #ffffff; border: 1px solid #e0e7ff; border-radius: 8px; padding: 12px;">
+              <canvas id="positionChart" height="180"></canvas>
+            </div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div style="font-weight: 600; margin-bottom: 6px;">Mean DNase value per track</div>
+            <div style="background: #ffffff; border: 1px solid #e0e7ff; border-radius: 8px; padding: 12px;">
+              <canvas id="trackMeansChart" height="120"></canvas>
+            </div>
+          </div>
+        {% endif %}
+
         {% if result.peaks_t0 %}
           <div style="margin-top: 12px;">
             <div style="font-weight: 600; margin-bottom: 6px;">Top peaks (track 0)</div>
@@ -244,6 +260,94 @@
       Local prototype - intended for experimentation with AlphaGenome.
     </div>
   </div>
+
+  {% if result and result.chart_data %}
+  <script>
+  (function() {
+    var chartData = {{ result.chart_data | tojson }};
+    var trackMeans = {{ result.track_means | tojson }};
+
+    var palette = [
+      'rgba(99,102,241,0.85)',
+      'rgba(239,68,68,0.85)',
+      'rgba(34,197,94,0.85)',
+      'rgba(249,115,22,0.85)',
+      'rgba(168,85,247,0.85)',
+    ];
+    var paletteBg = [
+      'rgba(99,102,241,0.15)',
+      'rgba(239,68,68,0.15)',
+      'rgba(34,197,94,0.15)',
+      'rgba(249,115,22,0.15)',
+      'rgba(168,85,247,0.15)',
+    ];
+
+    /* --- Line chart: signal by position --- */
+    var datasets = chartData.datasets.map(function(ds, i) {
+      return {
+        label: ds.label,
+        data: ds.data,
+        borderColor: palette[i % palette.length],
+        backgroundColor: paletteBg[i % paletteBg.length],
+        borderWidth: 1.5,
+        pointRadius: chartData.labels.length > 80 ? 0 : 2,
+        fill: i === 0,
+        tension: 0.25,
+      };
+    });
+    new Chart(document.getElementById('positionChart'), {
+      type: 'line',
+      data: { labels: chartData.labels, datasets: datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { title: function(items) { return 'Position ' + items[0].label; } } },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'Sequence position', font: { size: 11 } },
+            ticks: {
+              maxTicksLimit: 20,
+              font: { size: 10 },
+              maxRotation: 45,
+            },
+          },
+          y: {
+            title: { display: true, text: 'DNase signal', font: { size: 11 } },
+            beginAtZero: true,
+          },
+        },
+      },
+    });
+
+    /* --- Bar chart: per-track means --- */
+    var barLabels = trackMeans.map(function(_, i) { return 'Track ' + i; });
+    var barColors = trackMeans.map(function(_, i) { return palette[i % palette.length]; });
+    new Chart(document.getElementById('trackMeansChart'), {
+      type: 'bar',
+      data: {
+        labels: barLabels,
+        datasets: [{
+          label: 'Mean DNase value',
+          data: trackMeans,
+          backgroundColor: barColors,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: 'Track', font: { size: 11 } } },
+          y: { title: { display: true, text: 'Mean value', font: { size: 11 } }, beginAtZero: true },
+        },
+      },
+    });
+  })();
+  </script>
+  {% endif %}
 </body>
 </html>
 
