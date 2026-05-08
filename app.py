@@ -200,6 +200,42 @@ def _top_peaks(segment, k: int = 5, track_index: int = 0) -> List[dict]:
     return [{"pos": int(i + 1), "value": float(v[i])} for i in idx]  # 1-based
 
 
+def _build_chart_data(segment, sequence: str, max_positions: int = 300, max_tracks: int = 5) -> Optional[dict]:
+    """Build downsampled position-level data for Chart.js visualisation."""
+    try:
+        import numpy as np
+    except ImportError:
+        return None
+
+    seg = np.asarray(segment, dtype=float)
+    if seg.ndim == 1:
+        seg = seg.reshape(-1, 1)
+    n_pos, n_tracks = seg.shape
+    if n_pos == 0:
+        return None
+
+    n_tracks = min(n_tracks, max_tracks)
+    seg = seg[:, :n_tracks]
+
+    if n_pos > max_positions:
+        step = n_pos / max_positions
+        indices = np.round(np.arange(0, n_pos, step)).astype(int)[:max_positions]
+        seg = seg[indices]
+        labels = [sequence[i] + str(i + 1) for i in indices]
+    else:
+        labels = [sequence[i] + str(i + 1) if i < len(sequence) else str(i + 1)
+                  for i in range(n_pos)]
+
+    datasets = []
+    for j in range(n_tracks):
+        datasets.append({
+            "label": f"Track {j}",
+            "data": [round(float(v), 5) for v in seg[:, j]],
+        })
+
+    return {"labels": labels, "datasets": datasets}
+
+
 def _highlighted_sequence(sequence: str, peak_positions_1based: List[int]) -> List[dict]:
     """Return a per-base structure for templating with peak highlights."""
     peak_set = set(int(p) for p in peak_positions_1based)
@@ -270,6 +306,7 @@ def index():
                 track_meta = _compact_track_metadata(output, max_tracks=10)
                 peaks_t0 = _top_peaks(segment, k=5, track_index=0)
                 highlighted_seq = _highlighted_sequence(sequence, [p["pos"] for p in peaks_t0])
+                chart_data = _build_chart_data(segment, sequence)
                 api_raw = _build_api_raw_output(output, segment, start_idx, len(sequence))
                 try:
                     api_raw_json = json.dumps(api_raw, indent=2, ensure_ascii=False)
@@ -280,11 +317,12 @@ def index():
                     "input_length": len(sequence),
                     "padded_length": len(padded),
                     "num_tracks": len(means),
-                    "track_means": [round(m, 4) for m in means[:10]],  # show first 10
+                    "track_means": [round(m, 4) for m in means[:10]],
                     "segment_stats": segment_stats,
                     "track_meta": track_meta,
                     "peaks_t0": peaks_t0,
                     "highlighted_seq": highlighted_seq,
+                    "chart_data": chart_data,
                     "api_raw_json": api_raw_json,
                 }
             except Exception as exc:  # noqa: BLE001
