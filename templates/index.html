@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Alphagenomio - AlphaGenome quick test</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -13,7 +14,7 @@
       color: #1f2933;
     }
     .container {
-      max-width: 720px;
+      max-width: 860px;
       margin: 32px auto;
       padding: 24px 20px 40px;
       background: #ffffff;
@@ -27,45 +28,110 @@
       color: #1a2b5a;
     }
     .subtitle {
-      margin: 0 0 1.5rem;
+      margin: 0 0 1rem;
       color: #4b5563;
       font-size: 0.95rem;
+    }
+    .disclaimer {
+      margin: 0 0 1.25rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+    .disclaimer a {
+      color: #9a3412;
     }
     label {
       display: block;
       font-weight: 600;
       margin-bottom: 0.4rem;
     }
-    textarea {
+    textarea, input[type="password"], select {
       width: 100%;
-      min-height: 120px;
       padding: 10px 12px;
-      font-family: monospace;
       font-size: 0.9rem;
       border-radius: 8px;
       border: 1px solid #d0d7e2;
-      resize: vertical;
       box-sizing: border-box;
     }
-    textarea:focus {
+    textarea {
+      min-height: 96px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      resize: vertical;
+    }
+    textarea:focus, input[type="password"]:focus, select:focus {
       outline: none;
       border-color: #6366f1;
       box-shadow: 0 0 0 1px #6366f1;
     }
-    .btn-primary {
+    .field-hint {
+      margin: -6px 0 12px;
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+    .field-block {
+      margin-bottom: 12px;
+    }
+    .seq-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 700px) {
+      .seq-grid { grid-template-columns: 1fr; }
+    }
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 12px;
+      font-size: 0.85rem;
+      color: #4b5563;
+    }
+    .btn-preset, .btn-secondary, .btn-primary {
       display: inline-block;
-      margin-top: 12px;
-      padding: 8px 18px;
+      padding: 8px 16px;
       border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .btn-preset {
+      background: #fff;
+      border: 1px solid #c7d2fe;
+      color: #3730a3;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+    }
+    .btn-preset:hover {
+      background: #eef2ff;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-primary {
       border: none;
       background: linear-gradient(135deg, #4f46e5, #6366f1);
       color: #ffffff;
-      font-weight: 600;
-      font-size: 0.95rem;
-      cursor: pointer;
     }
     .btn-primary:hover {
       background: linear-gradient(135deg, #4338ca, #4f46e5);
+    }
+    .btn-secondary {
+      border: 1px solid #4f46e5;
+      background: #ffffff;
+      color: #3730a3;
+    }
+    .btn-secondary:hover {
+      background: #eef2ff;
     }
     .error {
       margin-top: 12px;
@@ -98,39 +164,237 @@
     .summary-list li {
       margin: 0.15rem 0;
     }
+    .section-title {
+      font-weight: 600;
+      margin: 12px 0 6px;
+    }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid #e0e7ff;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    table.data th {
+      padding: 8px;
+      border-bottom: 1px solid #e0e7ff;
+      background: #eef2ff;
+      text-align: left;
+    }
+    table.data td {
+      padding: 8px;
+      border-bottom: 1px solid #f1f5ff;
+    }
+    .note {
+      margin: 8px 0 0;
+      font-size: 0.82rem;
+      color: #6b7280;
+    }
+    .peaks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .peak-chip {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    .seq-view {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      word-break: break-all;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #e0e7ff;
+      background: #ffffff;
+    }
+    .chart-box {
+      background: #ffffff;
+      border: 1px solid #e0e7ff;
+      border-radius: 8px;
+      padding: 12px;
+    }
     .footer-note {
       margin-top: 24px;
       font-size: 0.8rem;
       color: #6b7280;
       text-align: right;
     }
+    .delta-positive { color: #166534; }
+    .delta-negative { color: #9f1239; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Alphagenomio</h1>
     <p class="subtitle">
-      Paste a DNA sequence and run a minimal DNase prediction using the AlphaGenome API.
+      Paste a DNA sequence for a DNase prediction, or paste reference and mutant sequences to compare them.
     </p>
+    <div class="disclaimer">
+      Independent research prototype — not a Google or DeepMind product.
+      AlphaGenome is for <strong>non-commercial research use only</strong>
+      (<a href="https://deepmind.google.com/science/alphagenome/terms" target="_blank" rel="noopener noreferrer">terms of service</a>).
+      Predictions are computational estimates, not medical or clinical advice.
+      API keys pasted here are sent only with that request and are not stored.
+    </div>
 
-    <form method="post">
+    <form method="post" id="predict-form">
       {% if show_api_key_field %}
-      <label for="api_key">AlphaGenome API key</label>
-      <input type="password" id="api_key" name="api_key" placeholder="Paste key here (not stored on server)" autocomplete="off" style="width: 100%; padding: 8px 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #d0d7e2; box-sizing: border-box; font-family: monospace;" />
-      <p style="margin: -6px 0 12px; font-size: 0.85rem; color: #6b7280;">Required only if the server has no key configured. Sent only with your request (use HTTPS).</p>
+      <div class="field-block">
+        <label for="api_key">AlphaGenome API key</label>
+        <input type="password" id="api_key" name="api_key" placeholder="Paste key here (not stored on server)" autocomplete="off" />
+        <p class="field-hint">Required only if the server has no key configured. Sent only with your request (use HTTPS).</p>
+      </div>
       {% endif %}
-      <label for="sequence">DNA sequence (A/C/G/T/N):</label>
-      <textarea id="sequence" name="sequence" spellcheck="false">{{ sequence }}</textarea>
-      <button type="submit" class="btn-primary">Run AlphaGenome</button>
+
+      <div class="field-block">
+        <label for="ontology_term">Tissue (same config for both sequences)</label>
+        <select id="ontology_term" name="ontology_term">
+          {% for curie, label in tissue_options %}
+          <option value="{{ curie }}" {% if curie == ontology_term %}selected{% endif %}>{{ label }} ({{ curie }})</option>
+          {% endfor %}
+        </select>
+        <p class="field-hint">DNase output. Default is lung (UBERON:0002048), matching the AlphaGenome quick start.</p>
+      </div>
+
+      <div class="presets">
+        <span>Examples:</span>
+        {% for p in presets %}
+        <button type="button" class="btn-preset" data-reference="{{ p.reference }}" data-mutant="{{ p.mutant }}">{{ p.label }}</button>
+        {% endfor %}
+      </div>
+
+      <div class="seq-grid">
+        <div class="field-block">
+          <label for="reference">Reference DNA sequence (A/C/G/T/N)</label>
+          <textarea id="reference" name="reference" spellcheck="false">{{ reference }}</textarea>
+        </div>
+        <div class="field-block">
+          <label for="mutant">Mutant DNA sequence (A/C/G/T/N)</label>
+          <textarea id="mutant" name="mutant" spellcheck="false">{{ mutant }}</textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary" name="action" value="run">Run AlphaGenome</button>
+        <button type="submit" class="btn-secondary" name="action" value="compare">Compare</button>
+      </div>
     </form>
 
     {% if error %}
       <div class="error">{{ error }}</div>
     {% endif %}
 
-    {% if result %}
+    {% if result and result.mode == "compare" %}
       <div class="card">
-        <h2>Prediction summary (DNase, UBERON:0002048 - lung)</h2>
+        <h2>Reference vs mutant (DNase, {{ result.ontology_term }} — {{ result.ontology_label }}, track 0)</h2>
+        <p class="note">Same tissue and DNase output for both runs. Δ is mutant minus reference. Peak shift is the change in 1-based argmax position on track 0.</p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Reference</th>
+                <th>Mutant</th>
+                <th>Δ (mut − ref)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Mean</td>
+                <td>{{ "%.4f"|format(result.deltas_t0.ref_mean) }}</td>
+                <td>{{ "%.4f"|format(result.deltas_t0.mut_mean) }}</td>
+                <td class="{{ 'delta-positive' if result.deltas_t0.delta_mean > 0 else 'delta-negative' if result.deltas_t0.delta_mean < 0 else '' }}">{{ "%+.4f"|format(result.deltas_t0.delta_mean) }}</td>
+              </tr>
+              <tr>
+                <td>Max</td>
+                <td>{{ "%.4f"|format(result.deltas_t0.ref_max) }}</td>
+                <td>{{ "%.4f"|format(result.deltas_t0.mut_max) }}</td>
+                <td class="{{ 'delta-positive' if result.deltas_t0.delta_max > 0 else 'delta-negative' if result.deltas_t0.delta_max < 0 else '' }}">{{ "%+.4f"|format(result.deltas_t0.delta_max) }}</td>
+              </tr>
+              <tr>
+                <td>Peak position</td>
+                <td>{{ result.deltas_t0.ref_peak_pos }}</td>
+                <td>{{ result.deltas_t0.mut_peak_pos }}</td>
+                <td>
+                  {% if result.deltas_t0.peak_shift is not none %}
+                    {{ "%+d"|format(result.deltas_t0.peak_shift) }} bp
+                  {% else %}
+                    n/a
+                  {% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {% if result.deltas_t0.length_mismatch %}
+          <p class="note">Sequences have different lengths, so peak positions are in each sequence’s own coordinates.</p>
+        {% endif %}
+        {% if result.mismatches is not none %}
+          <p class="note">
+            {% if result.mismatches %}
+              {{ result.mismatches|length }} differing base{{ 's' if result.mismatches|length != 1 else '' }}
+              (pos {% for m in result.mismatches %}{{ m.pos }}{{ ', ' if not loop.last else '' }}{% endfor %}).
+            {% else %}
+              Sequences are the same length and identical.
+            {% endif %}
+          </p>
+        {% endif %}
+
+        {% if result.overlay_chart %}
+          <div class="section-title">Track 0 DNase: reference vs mutant</div>
+          <div class="chart-box">
+            <canvas id="overlayChart" height="180"></canvas>
+          </div>
+        {% endif %}
+
+        <div class="actions" style="margin-top: 12px;">
+          <button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="downloadCsv('alphagenomio-compare.csv', {{ result.csv_text | tojson }})">Download CSV</button>
+        </div>
+
+        <details style="margin-top: 12px;">
+          <summary style="cursor: pointer; font-weight: 600;">Reference run details</summary>
+          <ul class="summary-list">
+            <li><strong>Input length:</strong> {{ result.reference.input_length }} bp</li>
+            <li><strong>Mean (first tracks):</strong> <code>{{ result.reference.track_means }}</code></li>
+          </ul>
+          {% if result.reference.peaks_t0 %}
+            <div class="section-title">Top peaks (track 0)</div>
+            <div class="peaks">
+              {% for p in result.reference.peaks_t0 %}
+                <div class="peak-chip">pos {{ p.pos }}: {{ "%.4f"|format(p.value) }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </details>
+        <details style="margin-top: 8px;">
+          <summary style="cursor: pointer; font-weight: 600;">Mutant run details</summary>
+          <ul class="summary-list">
+            <li><strong>Input length:</strong> {{ result.mutant.input_length }} bp</li>
+            <li><strong>Mean (first tracks):</strong> <code>{{ result.mutant.track_means }}</code></li>
+          </ul>
+          {% if result.mutant.peaks_t0 %}
+            <div class="section-title">Top peaks (track 0)</div>
+            <div class="peaks">
+              {% for p in result.mutant.peaks_t0 %}
+                <div class="peak-chip">pos {{ p.pos }}: {{ "%.4f"|format(p.value) }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </details>
+      </div>
+    {% elif result %}
+      <div class="card">
+        <h2>Prediction summary (DNase, {{ result.ontology_term }} — {{ result.ontology_label }})</h2>
         <ul class="summary-list">
           <li><strong>Input length:</strong> {{ result.input_length }} bp</li>
           <li><strong>Padded length (model context):</strong> {{ result.padded_length }} bp</li>
@@ -141,92 +405,99 @@
           </li>
         </ul>
         {% if result.track_meta %}
-          <div style="margin-top: 12px;">
-            <div style="font-weight: 600; margin-bottom: 6px;">Tracks (metadata)</div>
-            <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
-              <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                <thead>
-                  <tr style="background: #eef2ff; text-align: left;">
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Name</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Tissue</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Life stage</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Source</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Strand</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">nonzero_mean</th>
-                  </tr>
-                </thead>
-                <tbody>
-                {% for row in result.track_meta %}
-                  <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.name }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.biosample_name }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.biosample_life_stage }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.data_source }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.strand }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ row.nonzero_mean }}</td>
-                  </tr>
-                {% endfor %}
-                </tbody>
-              </table>
-            </div>
+          <div class="section-title">Tracks (metadata)</div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Tissue</th>
+                  <th>Life stage</th>
+                  <th>Source</th>
+                  <th>Strand</th>
+                  <th>nonzero_mean</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for row in result.track_meta %}
+                <tr>
+                  <td>{{ row.name }}</td>
+                  <td>{{ row.biosample_name }}</td>
+                  <td>{{ row.biosample_life_stage }}</td>
+                  <td>{{ row.data_source }}</td>
+                  <td>{{ row.strand }}</td>
+                  <td>{{ row.nonzero_mean }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
           </div>
         {% endif %}
 
         {% if result.segment_stats %}
-          <div style="margin-top: 12px;">
-            <div style="font-weight: 600; margin-bottom: 6px;">Segment stats (your sequence only)</div>
-            <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
-              <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                <thead>
-                  <tr style="background: #eef2ff; text-align: left;">
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Track</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Min</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Mean</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Max</th>
-                    <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Peak pos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                {% for st in result.segment_stats %}
-                  <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ st.track_index }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.min) }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.mean) }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.max) }}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ st.max_pos }}</td>
-                  </tr>
-                {% endfor %}
-                </tbody>
-              </table>
-            </div>
+          <div class="section-title">Segment stats (your sequence only)</div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Track</th>
+                  <th>Min</th>
+                  <th>Mean</th>
+                  <th>Max</th>
+                  <th>Peak pos</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for st in result.segment_stats %}
+                <tr>
+                  <td>{{ st.track_index }}</td>
+                  <td>{{ "%.4f"|format(st.min) }}</td>
+                  <td>{{ "%.4f"|format(st.mean) }}</td>
+                  <td>{{ "%.4f"|format(st.max) }}</td>
+                  <td>{{ st.max_pos }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        {% if result.chart_data %}
+          <div class="section-title">DNase signal across your sequence</div>
+          <div class="chart-box">
+            <canvas id="positionChart" height="180"></canvas>
+          </div>
+          <div class="section-title">Mean DNase value per track</div>
+          <div class="chart-box">
+            <canvas id="trackMeansChart" height="120"></canvas>
           </div>
         {% endif %}
 
         {% if result.peaks_t0 %}
-          <div style="margin-top: 12px;">
-            <div style="font-weight: 600; margin-bottom: 6px;">Top peaks (track 0)</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-              {% for p in result.peaks_t0 %}
-                <div style="background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; padding: 6px 10px; border-radius: 999px; font-size: 0.85rem;">
-                  pos {{ p.pos }}: {{ "%.4f"|format(p.value) }}
-                </div>
-              {% endfor %}
-            </div>
+          <div class="section-title">Top peaks (track 0)</div>
+          <div class="peaks">
+            {% for p in result.peaks_t0 %}
+              <div class="peak-chip">pos {{ p.pos }}: {{ "%.4f"|format(p.value) }}</div>
+            {% endfor %}
           </div>
         {% endif %}
 
         {% if result.highlighted_seq %}
-          <div style="margin-top: 10px;">
-            <div style="font-weight: 600; margin-bottom: 6px;">Sequence (peaks highlighted)</div>
-            <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; font-size: 0.95rem; line-height: 1.6; word-break: break-all; padding: 10px; border-radius: 8px; border: 1px solid #e0e7ff; background: #ffffff;">
-              {% for b in result.highlighted_seq %}
-                {% if b.is_peak %}
-                  <span title="pos {{ b.pos }}" style="background: #fde68a; border-radius: 4px; padding: 0 2px;">{{ b.ch }}</span>
-                {% else %}
-                  <span title="pos {{ b.pos }}">{{ b.ch }}</span>
-                {% endif %}
-              {% endfor %}
-            </div>
+          <div class="section-title">Sequence (peaks highlighted)</div>
+          <div class="seq-view">
+            {% for b in result.highlighted_seq %}
+              {% if b.is_peak %}
+                <span title="pos {{ b.pos }}" style="background: #fde68a; border-radius: 4px; padding: 0 2px;">{{ b.ch }}</span>
+              {% else %}
+                <span title="pos {{ b.pos }}">{{ b.ch }}</span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if result.csv_text %}
+          <div class="actions" style="margin-top: 12px;">
+            <button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="downloadCsv('alphagenomio-dnase.csv', {{ result.csv_text | tojson }})">Download CSV</button>
           </div>
         {% endif %}
 
@@ -241,9 +512,148 @@
     {% endif %}
 
     <div class="footer-note">
-      Local prototype - intended for experimentation with AlphaGenome.
+      Local prototype — intended for non-commercial experimentation with AlphaGenome.
     </div>
   </div>
+
+  <script>
+  (function() {
+    document.querySelectorAll(".btn-preset").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        document.getElementById("reference").value = btn.getAttribute("data-reference") || "";
+        document.getElementById("mutant").value = btn.getAttribute("data-mutant") || "";
+      });
+    });
+  })();
+
+  function downloadCsv(filename, text) {
+    var blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  var palette = [
+    "rgba(99,102,241,0.85)",
+    "rgba(239,68,68,0.85)",
+    "rgba(34,197,94,0.85)",
+    "rgba(249,115,22,0.85)",
+    "rgba(168,85,247,0.85)"
+  ];
+  var paletteBg = [
+    "rgba(99,102,241,0.15)",
+    "rgba(239,68,68,0.15)",
+    "rgba(34,197,94,0.15)",
+    "rgba(249,115,22,0.15)",
+    "rgba(168,85,247,0.15)"
+  ];
+
+  {% if result and result.mode == "compare" and result.overlay_chart %}
+  (function() {
+    var chartData = {{ result.overlay_chart | tojson }};
+    var datasets = chartData.datasets.map(function(ds, i) {
+      return {
+        label: ds.label,
+        data: ds.data,
+        borderColor: palette[i % palette.length],
+        backgroundColor: paletteBg[i % paletteBg.length],
+        borderWidth: 1.5,
+        pointRadius: chartData.labels.length > 80 ? 0 : 2,
+        fill: false,
+        tension: 0.25,
+        spanGaps: true
+      };
+    });
+    new Chart(document.getElementById("overlayChart"), {
+      type: "line",
+      data: { labels: chartData.labels, datasets: datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { title: function(items) { return "Position " + items[0].label; } } }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: "Sequence position", font: { size: 11 } },
+            ticks: { maxTicksLimit: 20, font: { size: 10 }, maxRotation: 45 }
+          },
+          y: {
+            title: { display: true, text: "DNase signal (track 0)", font: { size: 11 } },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  })();
+  {% elif result and result.chart_data %}
+  (function() {
+    var chartData = {{ result.chart_data | tojson }};
+    var trackMeans = {{ result.track_means | tojson }};
+    var datasets = chartData.datasets.map(function(ds, i) {
+      return {
+        label: ds.label,
+        data: ds.data,
+        borderColor: palette[i % palette.length],
+        backgroundColor: paletteBg[i % paletteBg.length],
+        borderWidth: 1.5,
+        pointRadius: chartData.labels.length > 80 ? 0 : 2,
+        fill: i === 0,
+        tension: 0.25
+      };
+    });
+    new Chart(document.getElementById("positionChart"), {
+      type: "line",
+      data: { labels: chartData.labels, datasets: datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "top", labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { title: function(items) { return "Position " + items[0].label; } } }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: "Sequence position", font: { size: 11 } },
+            ticks: { maxTicksLimit: 20, font: { size: 10 }, maxRotation: 45 }
+          },
+          y: {
+            title: { display: true, text: "DNase signal", font: { size: 11 } },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+    var barLabels = trackMeans.map(function(_, i) { return "Track " + i; });
+    var barColors = trackMeans.map(function(_, i) { return palette[i % palette.length]; });
+    new Chart(document.getElementById("trackMeansChart"), {
+      type: "bar",
+      data: {
+        labels: barLabels,
+        datasets: [{
+          label: "Mean DNase value",
+          data: trackMeans,
+          backgroundColor: barColors,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: "Track", font: { size: 11 } } },
+          y: { title: { display: true, text: "Mean value", font: { size: 11 } }, beginAtZero: true }
+        }
+      }
+    });
+  })();
+  {% endif %}
+  </script>
 </body>
 </html>
-
