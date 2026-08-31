@@ -64,8 +64,28 @@
       font-size: 0.95rem;
       cursor: pointer;
     }
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #4338ca, #4f46e5);
+    .btn-secondary {
+      display: inline-block;
+      margin-top: 12px;
+      margin-left: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid #d0d7e2;
+      background: #ffffff;
+      color: #374151;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid #d0d7e2;
+      box-sizing: border-box;
+      font-size: 0.95rem;
+      background: #fff;
     }
     .error {
       margin-top: 12px;
@@ -154,6 +174,13 @@
       <input type="password" id="api_key" name="api_key" placeholder="Paste key here (not stored on server)" autocomplete="off" style="width: 100%; padding: 8px 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #d0d7e2; box-sizing: border-box; font-family: monospace;" />
       {% endif %}
 
+      <label for="tissue">Tissue</label>
+      <select id="tissue" name="tissue">
+        {% for key, info in tissue_options.items() %}
+          <option value="{{ key }}" {% if tissue == key %}selected{% endif %}>{{ info.label }}</option>
+        {% endfor %}
+      </select>
+
       <div class="mode-tabs">
         <label>
           <input type="radio" name="mode" value="single" {% if mode != "compare" %}checked{% endif %} onchange="toggleMode()" />
@@ -168,7 +195,10 @@
       <div id="single-fields" class="field-group{% if mode == 'compare' %} hidden{% endif %}">
         <label for="sequence">DNA sequence (A/C/G/T/N):</label>
         <textarea id="sequence" name="sequence" spellcheck="false">{{ sequence }}</textarea>
-        <button type="submit" class="btn-primary">Run AlphaGenome</button>
+        <div>
+          <button type="button" class="btn-secondary" onclick="fillSingleExample()">Insert example</button>
+          <button type="submit" class="btn-primary">Run AlphaGenome</button>
+        </div>
       </div>
 
       <div id="compare-fields" class="field-group{% if mode != 'compare' %} hidden{% endif %}">
@@ -176,7 +206,10 @@
         <textarea id="reference" name="reference" spellcheck="false">{{ reference }}</textarea>
         <label for="mutant" style="margin-top: 12px;">Mutant sequence (same length):</label>
         <textarea id="mutant" name="mutant" spellcheck="false">{{ mutant }}</textarea>
-        <button type="submit" class="btn-primary">Compare</button>
+        <div>
+          <button type="button" class="btn-secondary" onclick="fillCompareExample()">Insert example</button>
+          <button type="submit" class="btn-primary">Compare</button>
+        </div>
       </div>
     </form>
 
@@ -186,7 +219,7 @@
 
     {% if compare_result %}
       <div class="card">
-        <h2>Reference vs Mutant (DNase, lung)</h2>
+        <h2>Reference vs Mutant (DNase, {{ compare_result.tissue_label }})</h2>
         <ul class="summary-list">
           <li><strong>Length:</strong> {{ compare_result.input_length }} bp</li>
           <li><strong>Changed positions:</strong>
@@ -247,7 +280,7 @@
 
     {% if result and not compare_result %}
       <div class="card">
-        <h2>Prediction summary (DNase, UBERON:0002048 - lung)</h2>
+        <h2>Prediction summary (DNase, {{ result.tissue_label }})</h2>
         <ul class="summary-list">
           <li><strong>Input length:</strong> {{ result.input_length }} bp</li>
           <li><strong>Padded length (model context):</strong> {{ result.padded_length }} bp</li>
@@ -366,6 +399,13 @@
       const compare = document.querySelector('input[name="mode"][value="compare"]').checked;
       document.getElementById("single-fields").classList.toggle("hidden", compare);
       document.getElementById("compare-fields").classList.toggle("hidden", !compare);
+    }
+    function fillSingleExample() {
+      document.getElementById("sequence").value = "GATTACA";
+    }
+    function fillCompareExample() {
+      document.getElementById("reference").value = "GATTACA";
+      document.getElementById("mutant").value = "GATTACG";
     }
   </script>
 </body>

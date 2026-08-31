@@ -15,6 +15,13 @@ except ImportError:
 
 app = Flask(__name__)
 
+TISSUE_OPTIONS = {
+    "lung": {"label": "Lung", "ontology": "UBERON:0002048"},
+    "liver": {"label": "Liver", "ontology": "UBERON:0001114"},
+    "brain": {"label": "Brain", "ontology": "UBERON:0000955"},
+}
+DEFAULT_TISSUE = "lung"
+
 
 def create_model(api_key: Optional[str] = None):
     """Create AlphaGenome DNA client. Uses api_key if given, else ALPHA_GENOME_API_KEY env."""
@@ -217,15 +224,16 @@ def _validate_sequence(seq: str, label: str = "Sequence") -> Optional[str]:
     return None
 
 
-def _predict_dnase(model, sequence: str) -> dict:
+def _predict_dnase(model, sequence: str, tissue: str = DEFAULT_TISSUE) -> dict:
     """Run DNase prediction for one sequence; return display-ready result fields."""
+    tissue_info = TISSUE_OPTIONS.get(tissue, TISSUE_OPTIONS[DEFAULT_TISSUE])
     padded = sequence.center(
         dna_client.SEQUENCE_LENGTH_1MB, "N"  # type: ignore[attr-defined]
     )
     output = model.predict_sequence(
         sequence=padded,
         requested_outputs=[dna_client.OutputType.DNASE],  # type: ignore[attr-defined]
-        ontology_terms=["UBERON:0002048"],
+        ontology_terms=[tissue_info["ontology"]],
     )
     dnase_values = output.dnase.values
     start_idx = (len(padded) - len(sequence)) // 2
@@ -243,6 +251,9 @@ def _predict_dnase(model, sequence: str) -> dict:
 
     return {
         "sequence": sequence,
+        "tissue_key": tissue if tissue in TISSUE_OPTIONS else DEFAULT_TISSUE,
+        "tissue_label": tissue_info["label"],
+        "tissue_ontology": tissue_info["ontology"],
         "input_length": len(sequence),
         "padded_length": len(padded),
         "num_tracks": len(means),
@@ -309,6 +320,7 @@ def index():
     reference: str = ""
     mutant: str = ""
     mode: str = "single"
+    tissue: str = DEFAULT_TISSUE
     result: Optional[dict] = None
     compare_result: Optional[dict] = None
     error: Optional[str] = None
@@ -318,6 +330,9 @@ def index():
         sequence = (request.form.get("sequence") or "").strip().upper()
         reference = (request.form.get("reference") or "").strip().upper()
         mutant = (request.form.get("mutant") or "").strip().upper()
+        tissue = (request.form.get("tissue") or DEFAULT_TISSUE).strip()
+        if tissue not in TISSUE_OPTIONS:
+            tissue = DEFAULT_TISSUE
         api_key = (request.form.get("api_key") or "").strip() or None
 
         if mode == "compare":
@@ -332,8 +347,8 @@ def index():
             else:
                 try:
                     model = get_model(api_key)
-                    ref_data = _predict_dnase(model, reference)
-                    mut_data = _predict_dnase(model, mutant)
+                    ref_data = _predict_dnase(model, reference, tissue)
+                    mut_data = _predict_dnase(model, mutant, tissue)
                     deltas = _compare_stats(ref_data["segment_stats"], mut_data["segment_stats"])
                     compare_result = {
                         "ref": ref_data,
@@ -341,6 +356,8 @@ def index():
                         "deltas": deltas,
                         "diff_positions": _diff_positions(reference, mutant),
                         "input_length": len(reference),
+                        "tissue_label": ref_data["tissue_label"],
+                        "tissue_ontology": ref_data["tissue_ontology"],
                     }
                 except Exception as exc:  # noqa: BLE001
                     error = f"Error while calling AlphaGenome: {exc}"
@@ -351,7 +368,7 @@ def index():
             else:
                 try:
                     model = get_model(api_key)
-                    result = _predict_dnase(model, sequence)
+                    result = _predict_dnase(model, sequence, tissue)
                 except Exception as exc:  # noqa: BLE001
                     error = f"Error while calling AlphaGenome: {exc}"
 
@@ -362,6 +379,8 @@ def index():
         reference=reference,
         mutant=mutant,
         mode=mode,
+        tissue=tissue,
+        tissue_options=TISSUE_OPTIONS,
         result=result,
         compare_result=compare_result,
         error=error,
