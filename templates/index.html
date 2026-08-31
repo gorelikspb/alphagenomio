@@ -102,33 +102,150 @@
       margin-top: 24px;
       font-size: 0.8rem;
       color: #6b7280;
-      text-align: right;
     }
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    .mode-tabs label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      margin: 0;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #d0d7e2;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .mode-tabs input { margin: 0; }
+    .field-group { margin-bottom: 12px; }
+    .field-group.hidden { display: none; }
+    .disclaimer {
+      margin-top: 16px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      font-size: 0.85rem;
+      color: #4b5563;
+    }
+    .delta-pos { color: #059669; font-weight: 600; }
+    .delta-neg { color: #dc2626; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Alphagenomio</h1>
     <p class="subtitle">
-      Paste a DNA sequence and run a minimal DNase prediction using the AlphaGenome API.
+      Run DNase predictions or compare reference vs mutant with the AlphaGenome API.
     </p>
 
-    <form method="post">
+    <div class="disclaimer">
+      For non-commercial research only. Not an official Google product.
+      {% if show_api_key_field %}Bring your own AlphaGenome API key — it is not stored on the server.{% endif %}
+    </div>
+
+    <form method="post" id="main-form">
       {% if show_api_key_field %}
       <label for="api_key">AlphaGenome API key</label>
       <input type="password" id="api_key" name="api_key" placeholder="Paste key here (not stored on server)" autocomplete="off" style="width: 100%; padding: 8px 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #d0d7e2; box-sizing: border-box; font-family: monospace;" />
-      <p style="margin: -6px 0 12px; font-size: 0.85rem; color: #6b7280;">Required only if the server has no key configured. Sent only with your request (use HTTPS).</p>
       {% endif %}
-      <label for="sequence">DNA sequence (A/C/G/T/N):</label>
-      <textarea id="sequence" name="sequence" spellcheck="false">{{ sequence }}</textarea>
-      <button type="submit" class="btn-primary">Run AlphaGenome</button>
+
+      <div class="mode-tabs">
+        <label>
+          <input type="radio" name="mode" value="single" {% if mode != "compare" %}checked{% endif %} onchange="toggleMode()" />
+          Single sequence
+        </label>
+        <label>
+          <input type="radio" name="mode" value="compare" {% if mode == "compare" %}checked{% endif %} onchange="toggleMode()" />
+          Compare ref vs mutant
+        </label>
+      </div>
+
+      <div id="single-fields" class="field-group{% if mode == 'compare' %} hidden{% endif %}">
+        <label for="sequence">DNA sequence (A/C/G/T/N):</label>
+        <textarea id="sequence" name="sequence" spellcheck="false">{{ sequence }}</textarea>
+        <button type="submit" class="btn-primary">Run AlphaGenome</button>
+      </div>
+
+      <div id="compare-fields" class="field-group{% if mode != 'compare' %} hidden{% endif %}">
+        <label for="reference">Reference sequence:</label>
+        <textarea id="reference" name="reference" spellcheck="false">{{ reference }}</textarea>
+        <label for="mutant" style="margin-top: 12px;">Mutant sequence (same length):</label>
+        <textarea id="mutant" name="mutant" spellcheck="false">{{ mutant }}</textarea>
+        <button type="submit" class="btn-primary">Compare</button>
+      </div>
     </form>
 
     {% if error %}
       <div class="error">{{ error }}</div>
     {% endif %}
 
-    {% if result %}
+    {% if compare_result %}
+      <div class="card">
+        <h2>Reference vs Mutant (DNase, lung)</h2>
+        <ul class="summary-list">
+          <li><strong>Length:</strong> {{ compare_result.input_length }} bp</li>
+          <li><strong>Changed positions:</strong>
+            {% if compare_result.diff_positions %}
+              {{ compare_result.diff_positions|join(", ") }}
+            {% else %}
+              none (identical sequences)
+            {% endif %}
+          </li>
+        </ul>
+
+        <div style="margin-top: 12px;">
+          <div style="font-weight: 600; margin-bottom: 6px;">Delta per track (mutant − reference)</div>
+          <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+              <thead>
+                <tr style="background: #eef2ff; text-align: left;">
+                  <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Track</th>
+                  <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Ref mean</th>
+                  <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Mut mean</th>
+                  <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Δ mean</th>
+                  <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Δ max</th>
+                  <th style="padding: 8px; border-bottom: 1px solid #e0e7ff;">Peak shift</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for d in compare_result.deltas %}
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ d.track_index }}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(d.ref_mean) }}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(d.mut_mean) }}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">
+                    <span class="{% if d.delta_mean >= 0 %}delta-pos{% else %}delta-neg{% endif %}">{{ "%+.4f"|format(d.delta_mean) }}</span>
+                  </td>
+                  <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">
+                    <span class="{% if d.delta_max >= 0 %}delta-pos{% else %}delta-neg{% endif %}">{{ "%+.4f"|format(d.delta_max) }}</span>
+                  </td>
+                  <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ d.peak_shift }} bp</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <details style="margin-top: 12px;">
+          <summary style="cursor: pointer; font-weight: 600;">Reference details</summary>
+          {% set result = compare_result.ref %}
+          {% include "partials/single_result.html" %}
+        </details>
+        <details style="margin-top: 8px;">
+          <summary style="cursor: pointer; font-weight: 600;">Mutant details</summary>
+          {% set result = compare_result.mut %}
+          {% include "partials/single_result.html" %}
+        </details>
+      </div>
+    {% endif %}
+
+    {% if result and not compare_result %}
       <div class="card">
         <h2>Prediction summary (DNase, UBERON:0002048 - lung)</h2>
         <ul class="summary-list">
@@ -241,9 +358,16 @@
     {% endif %}
 
     <div class="footer-note">
-      Local prototype - intended for experimentation with AlphaGenome.
+      Local prototype for AlphaGenome experimentation.
     </div>
   </div>
+  <script>
+    function toggleMode() {
+      const compare = document.querySelector('input[name="mode"][value="compare"]').checked;
+      document.getElementById("single-fields").classList.toggle("hidden", compare);
+      document.getElementById("compare-fields").classList.toggle("hidden", !compare);
+    }
+  </script>
 </body>
 </html>
 

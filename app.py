@@ -209,6 +209,76 @@ def _highlighted_sequence(sequence: str, peak_positions_1based: List[int]) -> Li
     return out
 
 
+def _validate_sequence(seq: str, label: str = "Sequence") -> Optional[str]:
+    if not seq:
+        return f"Please paste a {label.lower()}."
+    if any(ch not in "ACGTN" for ch in seq):
+        return f"{label} must contain only A, C, G, T (and optionally N)."
+    return None
+
+
+def _predict_dnase(model, sequence: str) -> dict:
+    """Run DNase prediction for one sequence; return display-ready result fields."""
+    padded = sequence.center(
+        dna_client.SEQUENCE_LENGTH_1MB, "N"  # type: ignore[attr-defined]
+    )
+    output = model.predict_sequence(
+        sequence=padded,
+        requested_outputs=[dna_client.OutputType.DNASE],  # type: ignore[attr-defined]
+        ontology_terms=["UBERON:0002048"],
+    )
+    dnase_values = output.dnase.values
+    start_idx = (len(padded) - len(sequence)) // 2
+    segment = dnase_values[start_idx : start_idx + len(sequence)]
+    means = summarize_dnase_predictions(segment)
+    segment_stats = _summarize_segment_stats(segment, max_tracks=10)
+    track_meta = _compact_track_metadata(output, max_tracks=10)
+    peaks_t0 = _top_peaks(segment, k=5, track_index=0)
+    highlighted_seq = _highlighted_sequence(sequence, [p["pos"] for p in peaks_t0])
+    api_raw = _build_api_raw_output(output, segment, start_idx, len(sequence))
+    try:
+        api_raw_json = json.dumps(api_raw, indent=2, ensure_ascii=False)
+    except (TypeError, ValueError):
+        api_raw_json = '{"note": "Full API response could not be serialized to JSON."}'
+
+    return {
+        "sequence": sequence,
+        "input_length": len(sequence),
+        "padded_length": len(padded),
+        "num_tracks": len(means),
+        "track_means": [round(m, 4) for m in means[:10]],
+        "segment_stats": segment_stats,
+        "track_meta": track_meta,
+        "peaks_t0": peaks_t0,
+        "highlighted_seq": highlighted_seq,
+        "api_raw_json": api_raw_json,
+    }
+
+
+def _diff_positions(ref: str, mut: str) -> List[int]:
+    return [i + 1 for i, (a, b) in enumerate(zip(ref, mut)) if a != b]
+
+
+def _compare_stats(ref_stats: List[dict], mut_stats: List[dict]) -> List[dict]:
+    deltas: List[dict] = []
+    for ref_st, mut_st in zip(ref_stats, mut_stats):
+        deltas.append(
+            {
+                "track_index": ref_st["track_index"],
+                "ref_mean": ref_st["mean"],
+                "mut_mean": mut_st["mean"],
+                "delta_mean": round(mut_st["mean"] - ref_st["mean"], 4),
+                "ref_max": ref_st["max"],
+                "mut_max": mut_st["max"],
+                "delta_max": round(mut_st["max"] - ref_st["max"], 4),
+                "ref_peak_pos": ref_st["max_pos"],
+                "mut_peak_pos": mut_st["max_pos"],
+                "peak_shift": mut_st["max_pos"] - ref_st["max_pos"],
+            }
+        )
+    return deltas
+
+
 def summarize_dnase_predictions(values) -> List[float]:
     """
     Take a 2D array (sequence_length x num_tracks) and return
@@ -236,65 +306,64 @@ def summarize_dnase_predictions(values) -> List[float]:
 @app.route("/", methods=["GET", "POST"])
 def index():
     sequence: str = ""
+    reference: str = ""
+    mutant: str = ""
+    mode: str = "single"
     result: Optional[dict] = None
+    compare_result: Optional[dict] = None
     error: Optional[str] = None
 
     if request.method == "POST":
+        mode = (request.form.get("mode") or "single").strip()
         sequence = (request.form.get("sequence") or "").strip().upper()
+        reference = (request.form.get("reference") or "").strip().upper()
+        mutant = (request.form.get("mutant") or "").strip().upper()
         api_key = (request.form.get("api_key") or "").strip() or None
-        if not sequence:
-            error = "Please paste a DNA sequence."
-        elif any(ch not in "ACGTN" for ch in sequence):
-            error = "Sequence must contain only A, C, G, T (and optionally N)."
-        else:
-            try:
-                model = get_model(api_key)
 
-                # Pad sequence to a valid length for AlphaGenome (1MB) using 'N'.
-                padded = sequence.center(
-                    dna_client.SEQUENCE_LENGTH_1MB, "N"  # type: ignore[attr-defined]
-                )
-
-                output = model.predict_sequence(
-                    sequence=padded,
-                    requested_outputs=[dna_client.OutputType.DNASE],  # type: ignore[attr-defined]
-                    ontology_terms=["UBERON:0002048"],  # Lung, as in quick-start example.
-                )
-
-                dnase_values = output.dnase.values  # shape: (padded_length, num_tracks)
-                # Average only over the user's sequence (center segment), not over N-padding
-                start_idx = (len(padded) - len(sequence)) // 2
-                segment = dnase_values[start_idx : start_idx + len(sequence)]
-                means = summarize_dnase_predictions(segment)
-                segment_stats = _summarize_segment_stats(segment, max_tracks=10)
-                track_meta = _compact_track_metadata(output, max_tracks=10)
-                peaks_t0 = _top_peaks(segment, k=5, track_index=0)
-                highlighted_seq = _highlighted_sequence(sequence, [p["pos"] for p in peaks_t0])
-                api_raw = _build_api_raw_output(output, segment, start_idx, len(sequence))
+        if mode == "compare":
+            err_ref = _validate_sequence(reference, "Reference")
+            err_mut = _validate_sequence(mutant, "Mutant")
+            if err_ref:
+                error = err_ref
+            elif err_mut:
+                error = err_mut
+            elif len(reference) != len(mutant):
+                error = "Reference and mutant must be the same length."
+            else:
                 try:
-                    api_raw_json = json.dumps(api_raw, indent=2, ensure_ascii=False)
-                except (TypeError, ValueError):
-                    api_raw_json = '{"note": "Full API response could not be serialized to JSON."}'
-
-                result = {
-                    "input_length": len(sequence),
-                    "padded_length": len(padded),
-                    "num_tracks": len(means),
-                    "track_means": [round(m, 4) for m in means[:10]],  # show first 10
-                    "segment_stats": segment_stats,
-                    "track_meta": track_meta,
-                    "peaks_t0": peaks_t0,
-                    "highlighted_seq": highlighted_seq,
-                    "api_raw_json": api_raw_json,
-                }
-            except Exception as exc:  # noqa: BLE001
-                error = f"Error while calling AlphaGenome: {exc}"
+                    model = get_model(api_key)
+                    ref_data = _predict_dnase(model, reference)
+                    mut_data = _predict_dnase(model, mutant)
+                    deltas = _compare_stats(ref_data["segment_stats"], mut_data["segment_stats"])
+                    compare_result = {
+                        "ref": ref_data,
+                        "mut": mut_data,
+                        "deltas": deltas,
+                        "diff_positions": _diff_positions(reference, mutant),
+                        "input_length": len(reference),
+                    }
+                except Exception as exc:  # noqa: BLE001
+                    error = f"Error while calling AlphaGenome: {exc}"
+        else:
+            err = _validate_sequence(sequence)
+            if err:
+                error = err
+            else:
+                try:
+                    model = get_model(api_key)
+                    result = _predict_dnase(model, sequence)
+                except Exception as exc:  # noqa: BLE001
+                    error = f"Error while calling AlphaGenome: {exc}"
 
     show_api_key_field = not bool(os.environ.get("ALPHA_GENOME_API_KEY"))
     return render_template(
         "index.html",
         sequence=sequence,
+        reference=reference,
+        mutant=mutant,
+        mode=mode,
         result=result,
+        compare_result=compare_result,
         error=error,
         show_api_key_field=show_api_key_field,
     )

@@ -1,0 +1,30 @@
+<div style="margin-top: 10px;">
+  <ul class="summary-list">
+    <li><strong>Length:</strong> {{ result.input_length }} bp</li>
+    <li><strong>Track means (first {{ result.track_means|length }}):</strong> <code>{{ result.track_means }}</code></li>
+  </ul>
+  {% if result.segment_stats %}
+    <div style="margin-top: 8px; overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+        <thead>
+          <tr style="background: #eef2ff; text-align: left;">
+            <th style="padding: 8px;">Track</th>
+            <th style="padding: 8px;">Mean</th>
+            <th style="padding: 8px;">Max</th>
+            <th style="padding: 8px;">Peak pos</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for st in result.segment_stats %}
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ st.track_index }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.mean) }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ "%.4f"|format(st.max) }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #f1f5ff;">{{ st.max_pos }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
