@@ -15,8 +15,8 @@
 
 - [x] **Выбор ткани** — dropdown lung / liver / brain
 - [x] **Insert example** — кнопки с GATTACA / GATTACG
-- [ ] **Download CSV** — экспорт таблицы Δ после Compare
-- [ ] **Push + live** — задеплоить tissue + examples на Render
+- [x] **Download CSV** — экспорт таблицы Δ после Compare (и stats после single run)
+- [x] **Push + live** — tissue + examples уже на `main` и на https://alphagenomio.onrender.com/ (проверено 2026-09-14). CSV выйдет на Render после merge в `main` (обычно auto-deploy).
 
 ### Что вставлять, если ты не биолог (проверка Live)
 
