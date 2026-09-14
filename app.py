@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import os
 from typing import Any, List, Optional
@@ -290,6 +292,93 @@ def _compare_stats(ref_stats: List[dict], mut_stats: List[dict]) -> List[dict]:
     return deltas
 
 
+def _csv_from_rows(headers: List[str], rows: List[List[Any]]) -> str:
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return buf.getvalue()
+
+
+def _round_num(value: Any, digits: int = 6) -> Any:
+    try:
+        return round(float(value), digits)
+    except (TypeError, ValueError):
+        return value
+
+
+def _single_stats_csv(result: dict) -> str:
+    """CSV of per-track segment stats for a single-sequence run."""
+    rows: List[List[Any]] = []
+    tissue = result.get("tissue_label") or ""
+    ontology = result.get("tissue_ontology") or ""
+    length = result.get("input_length")
+    for st in result.get("segment_stats") or []:
+        rows.append(
+            [
+                tissue,
+                ontology,
+                length,
+                st.get("track_index"),
+                _round_num(st.get("min")),
+                _round_num(st.get("mean")),
+                _round_num(st.get("max")),
+                st.get("max_pos"),
+            ]
+        )
+    return _csv_from_rows(
+        ["tissue", "ontology", "length", "track", "min", "mean", "max", "peak_pos"],
+        rows,
+    )
+
+
+def _compare_deltas_csv(compare_result: dict) -> str:
+    """CSV of the Compare delta table (mutant − reference), including peak shift."""
+    rows: List[List[Any]] = []
+    tissue = compare_result.get("tissue_label") or ""
+    ontology = compare_result.get("tissue_ontology") or ""
+    length = compare_result.get("input_length")
+    changed = ";".join(str(p) for p in (compare_result.get("diff_positions") or []))
+    for d in compare_result.get("deltas") or []:
+        rows.append(
+            [
+                tissue,
+                ontology,
+                length,
+                changed,
+                d.get("track_index"),
+                _round_num(d.get("ref_mean")),
+                _round_num(d.get("mut_mean")),
+                _round_num(d.get("delta_mean"), 4),
+                _round_num(d.get("ref_max")),
+                _round_num(d.get("mut_max")),
+                _round_num(d.get("delta_max"), 4),
+                d.get("ref_peak_pos"),
+                d.get("mut_peak_pos"),
+                d.get("peak_shift"),
+            ]
+        )
+    return _csv_from_rows(
+        [
+            "tissue",
+            "ontology",
+            "length",
+            "changed_positions",
+            "track",
+            "ref_mean",
+            "mut_mean",
+            "delta_mean",
+            "ref_max",
+            "mut_max",
+            "delta_max",
+            "ref_peak_pos",
+            "mut_peak_pos",
+            "peak_shift",
+        ],
+        rows,
+    )
+
+
 def summarize_dnase_predictions(values) -> List[float]:
     """
     Take a 2D array (sequence_length x num_tracks) and return
@@ -359,6 +448,7 @@ def index():
                         "tissue_label": ref_data["tissue_label"],
                         "tissue_ontology": ref_data["tissue_ontology"],
                     }
+                    compare_result["csv_text"] = _compare_deltas_csv(compare_result)
                 except Exception as exc:  # noqa: BLE001
                     error = f"Error while calling AlphaGenome: {exc}"
         else:
@@ -369,6 +459,7 @@ def index():
                 try:
                     model = get_model(api_key)
                     result = _predict_dnase(model, sequence, tissue)
+                    result["csv_text"] = _single_stats_csv(result)
                 except Exception as exc:  # noqa: BLE001
                     error = f"Error while calling AlphaGenome: {exc}"
 
