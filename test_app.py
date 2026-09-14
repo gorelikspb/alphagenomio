@@ -123,7 +123,7 @@ class AppTests(unittest.TestCase):
         html = resp.get_data(as_text=True)
         self.assertEqual(resp.status_code, 200)
         self.assertIn("Download CSV", html)
-        self.assertIn("JSON.parse(document.getElementById('compare-csv-data')", html)
+        self.assertIn("window.__COMPARE_CSV__", html)
         self.assertNotRegex(html, r'onclick="downloadCsv\([^)]+", "')
         self.assertIn("Delta per track", html)
         self.assertNotIn("user-secret-key", html)
@@ -270,16 +270,9 @@ class AppTests(unittest.TestCase):
         import re
 
         self.assertIn(f"downloadCsv('{filename}'", html)
-        if filename.startswith("alphagenomio-compare"):
-            tag_id = "compare-csv-data"
-        else:
-            tag_id = "single-csv-data"
-        match = re.search(
-            rf'<script type="application/json" id="{tag_id}">(.*?)</script>',
-            html,
-            flags=re.DOTALL,
-        )
-        self.assertIsNotNone(match, f"missing JSON payload for {filename}")
+        var_name = "__COMPARE_CSV__" if filename.startswith("alphagenomio-compare") else "__SINGLE_CSV__"
+        match = re.search(rf"window\.{var_name} = (.*?);\s*$", html, flags=re.MULTILINE)
+        self.assertIsNotNone(match, f"missing JS payload for {filename}")
         return json.loads(match.group(1))
 
 

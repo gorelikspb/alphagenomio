@@ -294,7 +294,7 @@ def _compare_stats(ref_stats: List[dict], mut_stats: List[dict]) -> List[dict]:
 
 def _csv_from_rows(headers: List[str], rows: List[List[Any]]) -> str:
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    writer = csv.writer(buf, lineterminator="\n")
     writer.writerow(headers)
     writer.writerows(rows)
     return buf.getvalue()
