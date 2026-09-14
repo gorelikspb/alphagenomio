@@ -235,7 +235,8 @@
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
             <div style="font-weight: 600;">Delta per track (mutant − reference)</div>
             {% if compare_result.csv_text %}
-              <button type="button" class="btn-secondary" style="margin-top: 0; margin-left: 0;" onclick="downloadCsv('alphagenomio-compare.csv', {{ compare_result.csv_text | tojson }})">Download CSV</button>
+              <script type="application/json" id="compare-csv-data">{{ compare_result.csv_text | tojson }}</script>
+              <button type="button" class="btn-secondary" style="margin-top: 0; margin-left: 0;" onclick="downloadCsv('alphagenomio-compare.csv', JSON.parse(document.getElementById('compare-csv-data').textContent))">Download CSV</button>
             {% endif %}
           </div>
           <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
@@ -332,7 +333,8 @@
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
               <div style="font-weight: 600;">Segment stats (your sequence only)</div>
               {% if result.csv_text %}
-                <button type="button" class="btn-secondary" style="margin-top: 0; margin-left: 0;" onclick="downloadCsv('alphagenomio-dnase-stats.csv', {{ result.csv_text | tojson }})">Download CSV</button>
+                <script type="application/json" id="single-csv-data">{{ result.csv_text | tojson }}</script>
+                <button type="button" class="btn-secondary" style="margin-top: 0; margin-left: 0;" onclick="downloadCsv('alphagenomio-dnase-stats.csv', JSON.parse(document.getElementById('single-csv-data').textContent))">Download CSV</button>
               {% endif %}
             </div>
             <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">

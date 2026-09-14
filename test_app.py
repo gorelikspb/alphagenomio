@@ -123,7 +123,8 @@ class AppTests(unittest.TestCase):
         html = resp.get_data(as_text=True)
         self.assertEqual(resp.status_code, 200)
         self.assertIn("Download CSV", html)
-        self.assertIn("alphagenomio-compare.csv", html)
+        self.assertIn("JSON.parse(document.getElementById('compare-csv-data')", html)
+        self.assertNotRegex(html, r'onclick="downloadCsv\([^)]+", "')
         self.assertIn("Delta per track", html)
         self.assertNotIn("user-secret-key", html)
         self.assertEqual(len(self.fake_model.calls), 2)
@@ -265,32 +266,21 @@ class AppTests(unittest.TestCase):
         self.assertEqual(parsed[0]["peak_pos"], "2")
 
     def _csv_from_html(self, html: str, filename: str) -> str:
-        marker = f"downloadCsv('{filename}', "
-        start = html.find(marker)
-        self.assertNotEqual(start, -1, f"missing downloadCsv for {filename}")
-        start += len(marker)
-        # JSON string produced by Jinja tojson
-        self.assertEqual(html[start], '"')
-        i = start + 1
-        escaped = False
-        chars = []
-        while i < len(html):
-            ch = html[i]
-            if escaped:
-                chars.append(ch)
-                escaped = False
-            elif ch == "\\":
-                escaped = True
-                chars.append(ch)
-            elif ch == '"':
-                break
-            else:
-                chars.append(ch)
-            i += 1
-        raw = '"' + "".join(chars) + '"'
         import json
+        import re
 
-        return json.loads(raw)
+        self.assertIn(f"downloadCsv('{filename}'", html)
+        if filename.startswith("alphagenomio-compare"):
+            tag_id = "compare-csv-data"
+        else:
+            tag_id = "single-csv-data"
+        match = re.search(
+            rf'<script type="application/json" id="{tag_id}">(.*?)</script>',
+            html,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(match, f"missing JSON payload for {filename}")
+        return json.loads(match.group(1))
 
 
 if __name__ == "__main__":
