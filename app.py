@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import os
 from typing import Any, List, Optional
@@ -290,6 +292,44 @@ def _compare_stats(ref_stats: List[dict], mut_stats: List[dict]) -> List[dict]:
     return deltas
 
 
+def _deltas_to_csv(deltas: List[dict], tissue_label: str, length: int) -> str:
+    """Build CSV text for the compare delta table."""
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["# tissue", tissue_label])
+    writer.writerow(["# length_bp", length])
+    writer.writerow(
+        [
+            "track_index",
+            "ref_mean",
+            "mut_mean",
+            "delta_mean",
+            "ref_max",
+            "mut_max",
+            "delta_max",
+            "ref_peak_pos",
+            "mut_peak_pos",
+            "peak_shift_bp",
+        ]
+    )
+    for d in deltas:
+        writer.writerow(
+            [
+                d["track_index"],
+                round(d["ref_mean"], 6),
+                round(d["mut_mean"], 6),
+                d["delta_mean"],
+                round(d["ref_max"], 6),
+                round(d["mut_max"], 6),
+                d["delta_max"],
+                d["ref_peak_pos"],
+                d["mut_peak_pos"],
+                d["peak_shift"],
+            ]
+        )
+    return buf.getvalue()
+
+
 def summarize_dnase_predictions(values) -> List[float]:
     """
     Take a 2D array (sequence_length x num_tracks) and return
@@ -358,6 +398,9 @@ def index():
                         "input_length": len(reference),
                         "tissue_label": ref_data["tissue_label"],
                         "tissue_ontology": ref_data["tissue_ontology"],
+                        "csv_text": _deltas_to_csv(
+                            deltas, ref_data["tissue_label"], len(reference)
+                        ),
                     }
                 except Exception as exc:  # noqa: BLE001
                     error = f"Error while calling AlphaGenome: {exc}"

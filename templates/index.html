@@ -232,7 +232,10 @@
         </ul>
 
         <div style="margin-top: 12px;">
-          <div style="font-weight: 600; margin-bottom: 6px;">Delta per track (mutant − reference)</div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <div style="font-weight: 600;">Delta per track (mutant − reference)</div>
+            <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="downloadCompareCsv()">Download CSV</button>
+          </div>
           <div style="overflow: auto; border: 1px solid #e0e7ff; border-radius: 8px; background: #ffffff;">
             <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
               <thead>
@@ -263,6 +266,7 @@
               </tbody>
             </table>
           </div>
+          <textarea id="compare-csv-data" hidden readonly>{{ compare_result.csv_text }}</textarea>
         </div>
 
         <details style="margin-top: 12px;">
@@ -406,6 +410,17 @@
     function fillCompareExample() {
       document.getElementById("reference").value = "GATTACA";
       document.getElementById("mutant").value = "GATTACG";
+    }
+    function downloadCompareCsv() {
+      const el = document.getElementById("compare-csv-data");
+      if (!el) return;
+      const blob = new Blob([el.value], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "alphagenomio-compare-delta.csv";
+      a.click();
+      URL.revokeObjectURL(url);
     }
   </script>
 </body>
