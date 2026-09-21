@@ -16,11 +16,11 @@
 - [x] **Выбор ткани** — dropdown lung / liver / brain
 - [x] **Insert example** — кнопки с GATTACA / GATTACG
 - [x] **Download CSV** — экспорт таблицы Δ после Compare
-- [ ] **Push + live** — задеплоить CSV (и проверить tissue / examples на Render)
+- [x] **Push + live** — CSV запушен в `main` (`5a83531`); через пару минут проверить на Render
 
 ## Следующие шаги (по приоритету)
 
-1. **Push на GitHub / Render** — чтобы на live появилась кнопка Download CSV.
+1. **Проверить live** — Compare → Download CSV на https://alphagenomio.onrender.com/
 2. **Пауза 1–2 недели** — смотреть, есть ли фидбек на Stack Exchange (вопрос AlphaGenome).
 3. **Biology SE** — 1–2 простых ответа без ссылок (карма), не alphag.
 4. **Опционально позже:**
@@ -33,6 +33,8 @@
 ## Критерий «готово для пользователя» (vision)
 
 - [ ] **5–10 человек вне автора** попробовали Compare за 2–3 месяца после live-деплоя
+
+### Что вставлять, если ты не биолог (проверка Live)
 
 **1. API key** — свой ключ AlphaGenome (не выдумывать):
 
